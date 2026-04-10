@@ -1,0 +1,48 @@
+# cat /root/msk0.l2ssh.init
+#!/bin/sh
+
+ifconfig tap0 create
+ifconfig tap1 create
+ifconfig tap2 create
+ifconfig tap0 up
+ifconfig tap1 up
+ifconfig tap2 up
+
+/usr/sbin/ngctl -f- <<-SEQ
+mkpeer tap0: vlan lower downstream
+connect tap0: tap0:lower upper nomatch
+mkpeer tap0:lower hub 100 t_100
+connect tap0:lower.100 msk0:lower m_100 100
+msg tap0:lower addfilter {hook="100" vid=100}
+msg msk0:lower addfilter {hook="100" vid=100}
+msg tap0: setpromisc 1
+msg tap0: setautosrc 0
+SEQ
+
+/usr/sbin/ngctl -f- <<-SEQ
+mkpeer tap1: vlan lower downstream
+connect tap1: tap1:lower upper nomatch
+connect tap1:lower msk0:lower.100 100 t1_100
+msg tap1:lower addfilter {hook="100" vid=100}
+msg tap1: setpromisc 1
+msg tap1: setautosrc 0
+SEQ
+
+
+/usr/sbin/ngctl -f- <<-SEQ
+mkpeer tap2: vlan lower downstream
+connect tap2: tap2:lower upper nomatch
+mkpeer msk0:lower hub 21 m_21
+connect msk0:lower.21 tap2:lower t2_21 21
+msg tap2:lower addfilter {hook="21" vid=21}
+msg msk0:lower addfilter {hook="21" vid=21}
+msg tap2: setpromisc 1
+msg tap2: setautosrc 0
+SEQ
+
+/usr/sbin/ngctl -f- <<-SEQ
+mkpeer msk0:lower hub 115 m_115
+connect tap1:lower msk0:lower.115 115 t1_115
+msg tap1:lower addfilter {hook="115" vid=115}
+msg msk0:lower addfilter {hook="115" vid=115}
+SEQ
