@@ -6,3 +6,6 @@ Forwarding an L2 tunnel through an SSH connection on FreeBSD systems.
 Идея не новая, но широкого распостранения не имеет.
 
 Используюя связку OpenSSH и Netgraph реализуем это на практике
+
+FreeBSD(client)-ssh-->tap0 --> tap0-sshd-FreeBSD(server)
+
