@@ -1,0 +1,2 @@
+#check L2SSH tunnel evry 10 min
+*/10 * * * * /path_to_file/L2SSH11.sh
