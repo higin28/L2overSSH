@@ -1,0 +1,66 @@
+# cat /root/msk0.120.init
+#!/bin/sh
+
+#
+#from freebsd < 13
+#
+
+for KLD in ng_vlan ng_ether ng_eiface; do
+        if ! kldstat -v | grep -qw ${KLD}; then
+                echo -n "Loading ${KLD}.ko... "
+                kldload ${KLD} || exit 1
+                echo "done"
+        fi
+done
+
+getmac(){
+MAC_PREFIX="00:01:02"
+M4=`od -An -N2 -i /dev/random | sed -e 's/ //g' | awk '{ print $1 % 256 }'`
+M5=`od -An -N2 -i /dev/random | sed -e 's/ //g' | awk '{ print $1 % 256 }'`
+M6=`od -An -N2 -i /dev/random | sed -e 's/ //g' | awk '{ print $1 % 256 }'`
+MAC=`printf ${MAC_PREFIX}:%02x:%02x:%02x ${M4} ${M5} ${M6}`
+echo $MAC
+}
+
+/usr/sbin/ngctl -f- <<-SEQ
+mkpeer msk0: vlan lower downstream
+connect msk0: msk0:lower upper nomatch
+mkpeer msk0:lower hub 120 m_120
+mkpeer msk0:lower.120 eiface e_120 ether
+msg msk0:lower.120.e_120 set 00:01:02:31:4a:73
+msg msk0:lower addfilter {hook="120" vid=120}
+msg msk0: setpromisc 1
+msg msk0: setautosrc 0
+SEQ
+
+ifconfig msk0 up
+
+#ifconfig ngeth0 link `getmac`
+#ifconfig ngeth0 link 00:01:02:31:5a:43
+
+ifconfig ngeth0 inet 192.168.20.26
+
+#dhclient ngeth0
+
+#
+#/usr/sbin/ngctl -f- <<-SEQ
+#mkpeer msk0: vlan lower downstream
+#connect msk0: msk0:lower upper nomatch
+#mkpeer msk0:lower eiface 120 ether
+##msg msk0:lower.120 set `getmac`
+#msg msk0:lower.120 set 00:01:02:31:4a:73
+#msg msk0:lower addfilter {hook="120" vid=120}
+#msg msk0: setpromisc 1
+#msg msk0: setautosrc 0
+#SEQ
+#
+
+#mkpeer msk0: vlan lower downstream
+#connect msk0: msk0:lower upper nomatch
+#name msk0:lower root_vlan
+#mkpeer root_vlan: hub 120 root_120
+#mkpeer root_vlan:120 eiface e_120 ether
+#msg root_vlan:120.e_120 set 00:01:02:31:4a:73
+#msg root_vlan: addfilter {hook="120" vid=120}
+#msg msk0: setpromisc 1
+#msg msk0: setautosrc 0
